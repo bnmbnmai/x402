@@ -10,6 +10,9 @@
     1,
     2
   ],
+  "extensions": [
+    "eip2612GasSponsoring"
+  ],
   "environment": {
     "required": [
       "EVM_PRIVATE_KEY",

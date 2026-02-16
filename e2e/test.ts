@@ -55,6 +55,51 @@ async function setupPermit2Approval(): Promise<boolean> {
   });
 }
 
+/**
+ * Revoke Permit2 approval so that EIP-2612 gas sponsoring extension is exercised.
+ * Sets the Permit2 allowance to 0, forcing the client to use the EIP-2612 permit path.
+ */
+async function revokePermit2Approval(): Promise<boolean> {
+  return new Promise((resolve) => {
+    verboseLog('  🔓 Revoking Permit2 approval for EIP-2612 test...');
+
+    const child = spawn('pnpm', ['permit2:revoke'], {
+      cwd: process.cwd(),
+      stdio: 'pipe',
+      shell: true,
+    });
+
+    let stderr = '';
+
+    child.stdout?.on('data', (data) => {
+      verboseLog(data.toString().trim());
+    });
+
+    child.stderr?.on('data', (data) => {
+      stderr += data.toString();
+      verboseLog(data.toString().trim());
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        verboseLog('  ✅ Permit2 approval revoked (allowance set to 0)');
+        resolve(true);
+      } else {
+        errorLog(`  ❌ Permit2 revoke failed (exit code ${code})`);
+        if (stderr) {
+          errorLog(`  Error: ${stderr}`);
+        }
+        resolve(false);
+      }
+    });
+
+    child.on('error', (error) => {
+      errorLog(`  ❌ Failed to run Permit2 revoke: ${error.message}`);
+      resolve(false);
+    });
+  });
+}
+
 // Load environment variables
 config();
 
@@ -389,22 +434,30 @@ async function runTest() {
   }
   log('');
 
-  // Auto-detect Permit2 scenarios and ensure approval exists
+  // Auto-detect Permit2 scenarios
   const hasPermit2Scenarios = filteredScenarios.some(
     (s) => s.endpoint.permit2 === true
   );
 
+  // Check if eip2612GasSponsoring extension should be tested
+  const hasEip2612Extension = selectedExtensions?.includes('eip2612GasSponsoring') ?? false;
+
   if (hasPermit2Scenarios) {
-    log('🔐 Permit2 scenarios detected - checking approval...');
-    const setupSuccess = await setupPermit2Approval();
-    if (!setupSuccess) {
-      errorLog(
-        '\n❌ Failed to setup Permit2 approval. Cannot continue with Permit2 tests.'
-      );
-      errorLog(
-        '💡 Make sure CLIENT_EVM_PRIVATE_KEY is set and the wallet has USDC.'
-      );
-      process.exit(1);
+    if (hasEip2612Extension) {
+      log('🔐 Permit2 scenarios detected with eip2612GasSponsoring extension');
+    } else {
+      // Standard permit2 flow: ensure approval exists
+      log('🔐 Permit2 scenarios detected - checking approval...');
+      const setupSuccess = await setupPermit2Approval();
+      if (!setupSuccess) {
+        errorLog(
+          '\n❌ Failed to setup Permit2 approval. Cannot continue with Permit2 tests.'
+        );
+        errorLog(
+          '💡 Make sure CLIENT_EVM_PRIVATE_KEY is set and the wallet has USDC.'
+        );
+        process.exit(1);
+      }
     }
   }
 
@@ -625,6 +678,10 @@ async function runTest() {
       };
 
       try {
+        if (hasEip2612Extension && scenario.endpoint.permit2) {
+          await revokePermit2Approval();
+        }
+
         log(`🧪 Test #${testNumber}: ${testName}`);
         const result = await runClientTest(scenario.client.proxy, clientConfig);
 

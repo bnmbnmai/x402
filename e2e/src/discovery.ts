@@ -318,7 +318,8 @@ export class TestDiscovery {
       const protocolFamilies = client.config.protocolFamilies || ['evm'];
       const versions = client.config.x402Versions || [1];
       const transport = client.config.transport || 'http';
-      log(`   - ${client.name} (${client.config.language}) [${transport}] v[${versions.join(', ')}] [${protocolFamilies.join(', ')}]`);
+      const extInfo = client.config.extensions ? ` {${client.config.extensions.join(', ')}}` : '';
+      log(`   - ${client.name} (${client.config.language}) [${transport}] v[${versions.join(', ')}] [${protocolFamilies.join(', ')}]${extInfo}`);
     });
 
     log(`🏛️ Facilitators found: ${facilitators.length}`);

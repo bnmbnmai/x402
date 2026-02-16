@@ -4,7 +4,8 @@
   "language": "typescript",
   "x402Version": 2,
   "extensions": [
-    "bazaar"
+    "bazaar",
+    "eip2612GasSponsoring"
   ],
   "endpoints": [
     {
@@ -13,6 +14,14 @@
       "description": "Protected endpoint using proxy middleware",
       "requiresPayment": true,
       "protocolFamily": "evm"
+    },
+    {
+      "path": "/api/protected-permit2-proxy",
+      "method": "GET",
+      "description": "Protected Permit2 endpoint using proxy middleware",
+      "requiresPayment": true,
+      "protocolFamily": "evm",
+      "permit2": true
     },
     {
       "path": "/api/protected-svm-proxy",
